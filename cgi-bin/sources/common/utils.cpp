@@ -91,3 +91,21 @@ int setMachineTimezone(const std::string timezone) {
     }
     return rc;
 }
+
+int runFormatExitDisks(void) {
+    int rc = -1;
+    char hdd[32] = {0};
+    char mountpoint[32] = {0};
+
+    FILE *fp = fopen("/proc/mounts", "r");
+    if (fp) {
+        while (fscanf(fp, "%31s %31s %*s %*s %*d %*d", hdd, mountpoint) == 2) {
+            if (strcmp(mountpoint, (const char*)"/mnt/sdcard") == 0) {
+                rc = runCommands("killall -9 p2p_client && umount -l %s && mkfs.vfat %s > /dev/null 2>&1", mountpoint, hdd);
+                break;
+            }
+        }
+        fclose(fp);
+    }
+    return rc;
+}

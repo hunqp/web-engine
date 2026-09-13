@@ -638,9 +638,11 @@ static void APIV1_CGI_SystemReset(FCGX_Request &message, nlohmann::json &js) {
         unlink(APP_WIFI_CONFIGURE_FILE);
         unlink(APP_REGISTERED_STATUS_FILE);
         runCommands("rm -f %s/*", APP_INTEGRATION_DIR);
+        runFormatExitDisks();
+        sleep(3);
         system("reboot");
     });
-
+    js["message"] = "Success. Device will be rebooted after 3 second.";
     HTTP_ResponseDataAsJSON(message, 200, js.dump());
 }
 
@@ -1023,20 +1025,7 @@ static void APIV1_CGI_StorageFormat(FCGX_Request &message, nlohmann::json &js) {
     std::string body = HTTP_ExtractBodyContent(message);
     nlohmann::json _js = nlohmann::json::parse(body);
     {
-        char hdd[32] = {0};
-        char mountpoint[32] = {0};
-
-        FILE *fp = fopen("/proc/mounts", "r");
-        if (fp) {
-            while (fscanf(fp, "%31s %31s %*s %*s %*d %*d", hdd, mountpoint) == 2) {
-                if (strcmp(mountpoint, (const char*)"/mnt/sdcard") == 0) {
-                    CGI_SYSD("Unmounting and formatting storage: %s -> %s\r\n", hdd, mountpoint);
-                    rc = runCommands("killall -9 p2p_client && umount -l %s && mkfs.vfat %s > /dev/null 2>&1", mountpoint, hdd);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
+        rc = runFormatExitDisks();
     }
     if (rc != 0) {
         js["success"] = false;
